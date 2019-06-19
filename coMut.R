@@ -353,7 +353,8 @@ genematrix <- xtabs(effect_idx ~ symbol + patient_name, data=final_analysis_subs
 mutcategs_mat <- xtabs(rate ~ categ + name, data = mutcategs)
 spectrum_legends <- apply(mutcategs_mat, 1, function(v) {
     len <- length(v[v>0])
-    legends <- names(v)[order(v[v>0], decreasing = T)[1:min(len, 2)]]
+    # print(len)
+    legends <- names(v)[order(v, decreasing = T)[1:min(len, 2)]]
     #lapply(legends, function(l) paste0(l, collapse = "."))
     paste0(legends, collapse = " or ")
 })
@@ -404,149 +405,150 @@ mutperc <- rev(sig_genes$npat)/nrow(patients.counts_and_rates)*100
 # remove silent
 genematrix[which(genematrix==1, arr.ind=TRUE)] <- 0
 
+
 vsize <- nrow(sig_genes)/10+3
 
 if (allelic.fraction.boxplot) {
-	extra.vsize <- .8
+    extra.vsize <- .8
 } else {
-	extra.vsize <- 0
+    extra.vsize <- 0
 }
 
 mutsigrunsuffix <- paste(ifelse(firehose.mode | mutsig.output=="", "", "_"), ifelse(firehose.mode | mutsig.output=="", "", mutsigrun), sep="")
 
 plot.coMut <- function() {
-# X11("", 8.5, vsize+1+extra.vsize)
-	
-	if (verbose) cat("  initial image plot\n")
-	## Mutation matrix
-	layout(matrix(c(6, 4, 7, 2, 1, 3, 0, 9, 0, 8, 5, 0), ncol=3, byrow=T), widths=c(1,3,1), heights=c(1, vsize-2, extra.vsize, 2))
-	par(mar=c(0,0,0,0), las=1)
-	image(1:ncol(genematrix), 1:nrow(genematrix), t(genematrix[rev(as.character(sig_genes$gene)), clustlabels, drop=FALSE]), col=c("grey94", brewer.pal(5, "Set1")), zlim=c(0,5), xlab="", ylab="", axes=FALSE)
-	segments(.5 + 1:(ncol(genematrix)-1), .5, .5 + 1:(ncol(genematrix)-1), .5 + nrow(genematrix), col="grey96", lwd=ifelse(ncol(genematrix)>200, .2, .5))
-	segments(.5, .5 + 1:(nrow(genematrix)-1), .5 + ncol(genematrix), .5 + 1:(nrow(genematrix)-1), col="grey96", lwd=ifelse(ncol(genematrix)>200, .2, .5))
-	
-	## Mutation counts
-	par(mar=c(0,.5, 0, 2))
-	
-	if (max(rowSums(sig_genes[,c(nonsilentColumnName, "nsil")]))>60) {
-		maxCountSigGenes <- as.integer(10^(quantile(log10(rowSums(sig_genes[,c(nonsilentColumnName, "nsil")])), 3/4) + 1.5*IQR(log10(rowSums(sig_genes[,c(nonsilentColumnName, "nsil")])))))
-	} else {
-		maxCountSigGenes <- max(rowSums(sig_genes[,c(nonsilentColumnName, "nsil")]))
-	}
-	if (verbose) cat("  counts\n")
-	plot(0, xlim=c(maxCountSigGenes, 0), type="n", axes=FALSE, frame.plot=FALSE, xlab="", ylab="")
-	par(usr=c(par("usr")[1:2], 0, nrow(sig_genes)), lwd=.8)
-	mypos <- barplot(t(sig_genes[nrow(sig_genes):1,c(nonsilentColumnName, "nsil")]), col=c("dodgerblue4", "#4DAF4A"), 
-			horiz=TRUE, names.arg=rep("", nrow(sig_genes)), add=TRUE, border="grey94", space=0, axes=FALSE)
-	axis(4, at=mypos, labels=paste(round(mutperc), "%", sep=""), line=-1, cex.axis=1.1, tick=FALSE)
-	if (maxCountSigGenes < max(rowSums(sig_genes[,c(nonsilentColumnName, "nsil")])))
-		text(rep(maxCountSigGenes*.9, 2), which(rev(rowSums(sig_genes[,c(nonsilentColumnName, "nsil")]))>maxCountSigGenes)-.5, 
-				cex=.8, col="white", labels=rev(rowSums(sig_genes[,c(nonsilentColumnName, "nsil")]))[which(rev(rowSums(sig_genes[,c(nonsilentColumnName, "nsil")]))>maxCountSigGenes)])
-	par(new=TRUE, lwd=1)
-	plot(0, xlim=c(maxCountSigGenes, 0), type="n", yaxt="n", frame.plot=FALSE, xlab="", ylab="")
-	mtext("# mutations", side=1, cex=.7, line=2)
-	
-	## q-values
-	par(mar=c(0,6,0,.5))
-	if (verbose) cat("  q values\n")
-	plot(0, xlim=c(min(.4, min(-log10(sig_genes$q+0.0001))), max(-log10(sig_genes$q+0.0001))), type="n", yaxt="n", frame.plot=FALSE, xlab="", ylab="")
-	par(usr=c(par("usr")[1:2], 0, nrow(sig_genes)), lwd=.8)
-	mypos <- barplot(rev(-log10(sig_genes$q+0.001)), horiz=TRUE, axes=FALSE, add=TRUE, names.arg=rep("", nrow(sig_genes)), border="grey94", space=0, cex.names=.9,
-			col=c("grey70", "grey55")[factor((rev(sig_genes$q)<=.1)+1, levels=c(1,2))])
-	axis(2, at=mypos, labels=rev(sig_genes$gene), lwd=0, , cex.axis=1.1, line=-.2)
-	mtext("-log10(q-value)", side=1, cex=.7, line=2.2, adj=1.1)
-	abline(v=-log10(.1), col="red", lwd=1)
-	abline(v=-log10(.25), col="purple", lty=2, lwd=1)
-	
-	## Mutation rates
-	par(mar=c(.5,0,.5,0), las=1)
-#plot(1, ylim=range(rowSums(patients.counts_and_rates[clustlabels,c("rate_non", "rate_sil")], na.rm=TRUE)*1e6), type="n", axes=F, xlab="", ylab="")
-	if (verbose) cat("  mutations rates\n")
-	plot(1, ylim=c(0,min(max.mutation.rate, max(rowSums(patients.counts_and_rates[clustlabels,c("rate_non", "rate_sil")], na.rm=TRUE)*1e6))), type="n", axes=F, xlab="", ylab="")
-	par(usr=c(0, nrow(patients.counts_and_rates), par("usr")[3:4]), lwd=ifelse(ncol(genematrix)>200, .2, .5))
-	barplot(t(patients.counts_and_rates[clustlabels,c("rate_non", "rate_sil")])*1e6, col=c("dodgerblue4", "#4DAF4A"), axes=FALSE, add=TRUE, names.arg=rep("", nrow(patients.counts_and_rates)), border="grey94", space=0)
-	par(lwd=1)
-	axis(2, cex.axis=1, line=.3)
-	if (any(rowSums(patients.counts_and_rates[clustlabels,c("rate_non", "rate_sil")]*1e6)>max.mutation.rate))
-		text(which(rowSums(patients.counts_and_rates[clustlabels,c("rate_non", "rate_sil")]*1e6)>max.mutation.rate)-.5, max.mutation.rate*.9, 
-				cex=.8, col="white", labels=round(rowSums(patients.counts_and_rates[clustlabels,c("rate_non", "rate_sil")]*1e6))[which(rowSums(patients.counts_and_rates[clustlabels,c("rate_non", "rate_sil")]*1e6)>max.mutation.rate)],
-				srt=90)
-	mtext("# mutations/Mb", side=2, cex=.7, line=2.7, las=0)
-	
-	## Mutation categories
-	if (verbose) cat("  mutations categories\n")
-	plot(0, ylim=c(0,100), type="n", axes=FALSE, xlab="", ylab="")
-	if (mutation.spectrum.plot && is.null(final_analysis_set$categ) == FALSE) {
-		par(mar=c(7,0,.5,0), las=1)
-		par(usr=c(0, ncol(mutational_signatures), 0,100))
-		box()
-		mutation_spectrum_plot_brewer <- brewer.pal(length(present_mut_categs) +1, "Spectral")[seq_along(present_mut_categs)]
-		mypos <- barplot(mutational_signatures[,clustlabels]*100, beside=FALSE, col=mutation_spectrum_plot_brewer, names.arg=rep("", ncol(mutational_signatures)), add=TRUE, border=NA, space=0, axes=FALSE)
-		axis(4, cex.axis=1, line=.3)
-		mtext("%", side=4, cex=.8, line=2.5, las=1)
-		par(las=2)
-		axis(1, at=mypos, labels=clustlabels, tick=FALSE, cex.axis=min((ifelse(length(clustlabels)<=130, .2, 0) + .7/log10(length(clustlabels))), 1), line=-.7)
-	}
-	
-	## Display legends
-	if (verbose) cat("  legends\n")
-	par(mar=c(.3,0,.5,0), las=1)
-	plot(0, type="n", axes=FALSE, xlab="", ylab="")
-	legend("center", "center", c("Syn.", "Non syn."), fill=c("#4DAF4A", "dodgerblue4"), cex=.9, bty = "n")
-	
-	plot(0, type="n", axes=FALSE, xlab="", ylab="")
-	par(xpd=NA)
-	legend("right", "top", effchar,
-			fill=brewer.pal(length(effchar), "Set1"), cex=.9, ncol=2, bty = "n", inset=0)
-	par(xpd=FALSE)
-	
-	par(mar=c(.5, 0, .5, 0.5), las=1)
-	plot(0, type="n", axes=FALSE, xlab="", ylab="")
-	if (mutation.spectrum.plot && is.null(final_analysis_set$categ) == FALSE) {
-		mutation.spectrum.legend <- rev(rownames(mutational_signatures))
-		legend("right", ifelse(allelic.fraction.boxplot,"top", "center"), 
-				mutation.spectrum.legend,
-				fill=rev(mutation_spectrum_plot_brewer), cex=.9, ncol=1, inset=0, bty = "n")
-	}
-	
-	## Allelic fraction boxplot
-	if (allelic.fraction.boxplot) {
-		if (verbose) cat("  allelic fraction boxplot\n")
-		plot(0, ylim=c(0,100), type="n", axes=FALSE, xlab="", ylab="")
-		par(mar=c(0.1, 0, .5, 0), las=1)
-		par(usr=c(0, length(clustlabels), 0,100))
-		box()
-		b <- boxplot(allelic.fraction.subset$t_alt_count/(allelic.fraction.subset$t_alt_count+allelic.fraction.subset$t_ref_count)*100 ~ allelic.fraction.subset$patient_name, 
-				pch=20, cex=.3, range=0, lty=1, col=brewer.pal(3, "Set1")[2], ylim=c(0,1), cex.axis=.6, axes=FALSE, add=TRUE, at=(1:length(clustlabels))-.5, plot=FALSE)
-		segments(x0=(1:length(clustlabels))-.5, y0=b$stats[1,], y1=b$stats[5,], col=brewer.pal(4, "Purples")[3], lwd=ifelse(ncol(genematrix)>200, .8, 1.5))
-		segments(x0=(1:length(clustlabels))-.5, y0=b$stats[2,], y1=b$stats[4,], col=brewer.pal(4, "Purples")[4], lwd=ifelse(ncol(genematrix)>200, 1.5, 3))
-		abline(h=median(allelic.fraction.subset$t_alt_count/(allelic.fraction.subset$t_alt_count+allelic.fraction.subset$t_ref_count)*100), col="red", lwd=1, lty=2)
-		axis(4, cex.axis=1, line=.3)
-		mtext("Allelic\nfraction", side=4, cex=.7, line=3.6, las=0)
-	}
-	
+    # X11("", 8.5, vsize+1+extra.vsize)
+    
+    if (verbose) cat("  initial image plot\n")
+    ## Mutation matrix
+    layout(matrix(c(6, 4, 7, 2, 1, 3, 0, 9, 0, 8, 5, 0), ncol=3, byrow=T), widths=c(1,3,1), heights=c(1, vsize-2, extra.vsize, 2))
+    par(mar=c(0,0,0,0), las=1)
+    image(1:ncol(genematrix), 1:nrow(genematrix), t(genematrix[rev(as.character(sig_genes$gene)), clustlabels, drop=FALSE]), col=c("grey94", brewer.pal(5, "Set1")), zlim=c(0,5), xlab="", ylab="", axes=FALSE)
+    segments(.5 + 1:(ncol(genematrix)-1), .5, .5 + 1:(ncol(genematrix)-1), .5 + nrow(genematrix), col="grey96", lwd=ifelse(ncol(genematrix)>200, .2, .5))
+    segments(.5, .5 + 1:(nrow(genematrix)-1), .5 + ncol(genematrix), .5 + 1:(nrow(genematrix)-1), col="grey96", lwd=ifelse(ncol(genematrix)>200, .2, .5))
+    
+    ## Mutation counts
+    par(mar=c(0,.5, 0, 2))
+    
+    if (max(rowSums(sig_genes[,c(nonsilentColumnName, "nsil")]))>60) {
+        maxCountSigGenes <- as.integer(10^(quantile(log10(rowSums(sig_genes[,c(nonsilentColumnName, "nsil")])), 3/4) + 1.5*IQR(log10(rowSums(sig_genes[,c(nonsilentColumnName, "nsil")])))))
+    } else {
+        maxCountSigGenes <- max(rowSums(sig_genes[,c(nonsilentColumnName, "nsil")]))
+    }
+    if (verbose) cat("  counts\n")
+    plot(0, xlim=c(maxCountSigGenes, 0), type="n", axes=FALSE, frame.plot=FALSE, xlab="", ylab="", main = analysis.set)
+    par(usr=c(par("usr")[1:2], 0, nrow(sig_genes)), lwd=.8)
+    mypos <- barplot(t(sig_genes[nrow(sig_genes):1,c(nonsilentColumnName, "nsil")]), col=c("dodgerblue4", "#4DAF4A"), 
+                     horiz=TRUE, names.arg=rep("", nrow(sig_genes)), add=TRUE, border="grey94", space=0, axes=FALSE)
+    axis(4, at=mypos, labels=paste(round(mutperc), "%", sep=""), line=-1, cex.axis=1.1, tick=FALSE)
+    if (maxCountSigGenes < max(rowSums(sig_genes[,c(nonsilentColumnName, "nsil")])))
+        text(rep(maxCountSigGenes*.9, 2), which(rev(rowSums(sig_genes[,c(nonsilentColumnName, "nsil")]))>maxCountSigGenes)-.5, 
+             cex=.8, col="white", labels=rev(rowSums(sig_genes[,c(nonsilentColumnName, "nsil")]))[which(rev(rowSums(sig_genes[,c(nonsilentColumnName, "nsil")]))>maxCountSigGenes)])
+    par(new=TRUE, lwd=1)
+    plot(0, xlim=c(maxCountSigGenes, 0), type="n", yaxt="n", frame.plot=FALSE, xlab="", ylab="")
+    mtext("# mutations", side=1, cex=.7, line=2)
+    
+    ## q-values
+    par(mar=c(0,6,0,.5))
+    if (verbose) cat("  q values\n")
+    plot(0, xlim=c(min(.4, min(-log10(sig_genes$q+0.0001))), max(-log10(sig_genes$q+0.0001))), type="n", yaxt="n", frame.plot=FALSE, xlab="", ylab="")
+    par(usr=c(par("usr")[1:2], 0, nrow(sig_genes)), lwd=.8)
+    mypos <- barplot(rev(-log10(sig_genes$q+0.001)), horiz=TRUE, axes=FALSE, add=TRUE, names.arg=rep("", nrow(sig_genes)), border="grey94", space=0, cex.names=.9,
+                     col=c("grey70", "grey55")[factor((rev(sig_genes$q)<=.1)+1, levels=c(1,2))])
+    axis(2, at=mypos, labels=rev(sig_genes$gene), lwd=0, , cex.axis=1.1, line=-.2)
+    mtext("-log10(q-value)", side=1, cex=.7, line=2.2, adj=1.1)
+    abline(v=-log10(.1), col="red", lwd=1)
+    abline(v=-log10(.25), col="purple", lty=2, lwd=1)
+    
+    ## Mutation rates
+    par(mar=c(.5,0,2,0), las=1)
+    #plot(1, ylim=range(rowSums(patients.counts_and_rates[clustlabels,c("rate_non", "rate_sil")], na.rm=TRUE)*1e6), type="n", axes=F, xlab="", ylab="")
+    if (verbose) cat("  mutations rates\n")
+    plot(1, ylim=c(0,min(max.mutation.rate, max(rowSums(patients.counts_and_rates[clustlabels,c("rate_non", "rate_sil")], na.rm=TRUE)*1e6))), type="n", axes=F, xlab="", ylab="", main = analysis.set)
+    par(usr=c(0, nrow(patients.counts_and_rates), par("usr")[3:4]), lwd=ifelse(ncol(genematrix)>200, .2, .5))
+    barplot(t(patients.counts_and_rates[clustlabels,c("rate_non", "rate_sil")])*1e6, col=c("dodgerblue4", "#4DAF4A"), axes=FALSE, add=TRUE, names.arg=rep("", nrow(patients.counts_and_rates)), border="grey94", space=0)
+    par(lwd=1)
+    axis(2, cex.axis=1, line=.3)
+    if (any(rowSums(patients.counts_and_rates[clustlabels,c("rate_non", "rate_sil")]*1e6)>max.mutation.rate))
+        text(which(rowSums(patients.counts_and_rates[clustlabels,c("rate_non", "rate_sil")]*1e6)>max.mutation.rate)-.5, max.mutation.rate*.9, 
+             cex=.8, col="white", labels=round(rowSums(patients.counts_and_rates[clustlabels,c("rate_non", "rate_sil")]*1e6))[which(rowSums(patients.counts_and_rates[clustlabels,c("rate_non", "rate_sil")]*1e6)>max.mutation.rate)],
+             srt=90)
+    mtext("# mutations/Mb", side=2, cex=.7, line=2.7, las=0)
+    
+    ## Mutation categories
+    if (verbose) cat("  mutations categories\n")
+    plot(0, ylim=c(0,100), type="n", axes=FALSE, xlab="", ylab="")
+    if (mutation.spectrum.plot && is.null(final_analysis_set$categ) == FALSE) {
+        par(mar=c(7,0,.5,0), las=1)
+        par(usr=c(0, ncol(mutational_signatures), 0,100))
+        box()
+        mutation_spectrum_plot_brewer <- brewer.pal(length(present_mut_categs) +1, "Spectral")[seq_along(present_mut_categs)]
+        mypos <- barplot(mutational_signatures[,clustlabels]*100, beside=FALSE, col=mutation_spectrum_plot_brewer, names.arg=rep("", ncol(mutational_signatures)), add=TRUE, border=NA, space=0, axes=FALSE)
+        axis(4, cex.axis=1, line=.3)
+        mtext("%", side=4, cex=.8, line=2.5, las=1)
+        par(las=2)
+        axis(1, at=mypos, labels=clustlabels, tick=FALSE, cex.axis=min((ifelse(length(clustlabels)<=130, .2, 0) + .7/log10(length(clustlabels))), 1), line=-.7)
+    }
+    
+    ## Display legends
+    if (verbose) cat("  legends\n")
+    par(mar=c(.3,0,.5,0), las=1)
+    plot(0, type="n", axes=FALSE, xlab="", ylab="")
+    legend("center", "center", c("Syn.", "Non syn."), fill=c("#4DAF4A", "dodgerblue4"), cex=.9, bty = "n")
+    
+    plot(0, type="n", axes=FALSE, xlab="", ylab="")
+    par(xpd=NA)
+    legend("right", "top", effchar,
+           fill=brewer.pal(length(effchar), "Set1"), cex=.9, ncol=2, bty = "n", inset=0)
+    par(xpd=FALSE)
+    
+    par(mar=c(.5, 0, .5, 0.5), las=1)
+    plot(0, type="n", axes=FALSE, xlab="", ylab="")
+    if (mutation.spectrum.plot && is.null(final_analysis_set$categ) == FALSE) {
+        mutation.spectrum.legend <- rev(rownames(mutational_signatures))
+        legend("right", ifelse(allelic.fraction.boxplot,"top", "center"), 
+               mutation.spectrum.legend,
+               fill=rev(mutation_spectrum_plot_brewer), cex=.9, ncol=1, inset=0, bty = "n")
+    }
+    
+    ## Allelic fraction boxplot
+    if (allelic.fraction.boxplot) {
+        if (verbose) cat("  allelic fraction boxplot\n")
+        plot(0, ylim=c(0,100), type="n", axes=FALSE, xlab="", ylab="")
+        par(mar=c(0.1, 0, .5, 0), las=1)
+        par(usr=c(0, length(clustlabels), 0,100))
+        box()
+        b <- boxplot(allelic.fraction.subset$t_alt_count/(allelic.fraction.subset$t_alt_count+allelic.fraction.subset$t_ref_count)*100 ~ allelic.fraction.subset$patient_name, 
+                     pch=20, cex=.3, range=0, lty=1, col=brewer.pal(3, "Set1")[2], ylim=c(0,1), cex.axis=.6, axes=FALSE, add=TRUE, at=(1:length(clustlabels))-.5, plot=FALSE)
+        segments(x0=(1:length(clustlabels))-.5, y0=b$stats[1,], y1=b$stats[5,], col=brewer.pal(4, "Purples")[3], lwd=ifelse(ncol(genematrix)>200, .8, 1.5))
+        segments(x0=(1:length(clustlabels))-.5, y0=b$stats[2,], y1=b$stats[4,], col=brewer.pal(4, "Purples")[4], lwd=ifelse(ncol(genematrix)>200, 1.5, 3))
+        abline(h=median(allelic.fraction.subset$t_alt_count/(allelic.fraction.subset$t_alt_count+allelic.fraction.subset$t_ref_count)*100), col="red", lwd=1, lty=2)
+        axis(4, cex.axis=1, line=.3)
+        mtext("Allelic\nfraction", side=4, cex=.7, line=3.6, las=0)
+    }
+    
 }
 
 
 if (verbose) cat("Plotting...\n")
 if (!png.output | firehose.mode) {
-	if (as.numeric(sub("(.*)\\..*","\\1",R.Version()$minor))>=14) {
-		if (full.verbose) cat("  Using Cairo\n")
-		cairo_pdf(paste(outputdir, "/", analysis.set, mutsigrunsuffix, "_coMut.pdf", sep=""), 8.5, vsize+1+extra.vsize) ## Only in R 2.14 and up
-		plot.coMut()
-		dev.off()
-	} else {
-		pdf(paste(outputdir, "/", analysis.set, mutsigrunsuffix, "_coMut.pdf", sep=""), 8.5, vsize+1+extra.vsize)
-		plot.coMut()
-		dev.off()
-	}
+    if (as.numeric(sub("(.*)\\..*","\\1",R.Version()$minor))>=14) {
+        if (full.verbose) cat("  Using Cairo\n")
+        cairo_pdf(paste(outputdir, "/", analysis.set, mutsigrunsuffix, "_coMut.pdf", sep=""), 8.5, vsize+1+extra.vsize) ## Only in R 2.14 and up
+        plot.coMut()
+        dev.off()
+    } else {
+        pdf(paste(outputdir, "/", analysis.set, mutsigrunsuffix, "_coMut.pdf", sep=""), 8.5, vsize+1+extra.vsize)
+        plot.coMut()
+        dev.off()
+    }
 } 
 
 cat(paste(clustlabels, collapse = '\n'), '\n')
 
 if (png.output | firehose.mode) {
-	png(paste(outputdir, "/", analysis.set, mutsigrunsuffix, "_coMut.png", sep=""), 8.5*120, (vsize+1+extra.vsize)*120, type="cairo", pointsize=20)
-	plot.coMut()
-	dev.off()
+    png(paste(outputdir, "/", analysis.set, mutsigrunsuffix, "_coMut.png", sep=""), 8.5*120, (vsize+1+extra.vsize)*120, type="cairo", pointsize=20)
+    plot.coMut()
+    dev.off()
 }
 
