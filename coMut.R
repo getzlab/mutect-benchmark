@@ -18,12 +18,12 @@
 ## You should have received a copy of the GNU Lesser General Public License
 ## along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ###############################################################################
-
+setwd("~/Downloads/PRAD/")
 
 library(optparse)
 library(R.matlab)
 library(RColorBrewer)
-
+library(dplyr)
 
 print("packages done")
 
@@ -348,6 +348,10 @@ final_analysis_subset <- aggregate(effect_idx ~ symbol + patient_name, max, na.r
 
 genematrix <- xtabs(effect_idx ~ symbol + patient_name, data=final_analysis_subset, drop.unused.levels = FALSE)
 
+# calculate the appearance of each mutation by category
+
+bkgd_N <- lapply(split(mutcategs, mutcategs$categ),function(df) data.frame(categ = unique(df$categ), sum_categ = sum(df$N)))
+bkgd_categ <- do.call(rbind, bkdg_N)
 
 ## build spectrum index legend
 mutcategs_mat <- xtabs(rate ~ categ + name, data = mutcategs)
@@ -365,8 +369,12 @@ if (mutation.spectrum.plot && is.null(final_analysis_set$categ) == FALSE) {
 	total_mut <- aggregate(count ~ patient_name, data=final_analysis_set, sum)
 	mutational_signatures <- aggregate(count ~ patient_name + categ, data=final_analysis_set, sum)
 	mutational_signatures <- merge(mutational_signatures, total_mut, by="patient_name")
-	mutational_signatures$rate <- mutational_signatures$count.x/mutational_signatures$count.y
+	mutational_signatures <- merge(mutational_signatures, bkgd_categ, by = "categ")
+	mutational_signatures$rate <- mutational_signatures$count.x/(mutational_signatures$count.y*mutational_signatures$sum_categ)
 	mutational_signatures <- xtabs(rate ~ categ + patient_name, mutational_signatures)
+	# make sure column sum is one
+	mutational_signatures <- apply(mutational_signatures, 2, function(x) x/sum(x))
+	
 	
 	if (nrow(mutational_signatures) == 0) {
 		stop("No mutational signatures found")
@@ -376,7 +384,7 @@ if (mutation.spectrum.plot && is.null(final_analysis_set$categ) == FALSE) {
 		stop("Mutational categories do not match the categories provided in the MAF")
 	}
 	rownames(mutational_signatures) <- new_rownames
-	mutational_signatures <- mutational_signatures[, order(mutational_signatures[rownames(mutational_signatures)[1],], decreasing=T), drop=FALSE]
+	# mutational_signatures <- mutational_signatures[, order(mutational_signatures[rownames(mutational_signatures)[1],], decreasing=T), drop=FALSE]
 	present_mut_categs <- rownames(mutational_signatures)
 }
 
@@ -436,7 +444,7 @@ plot.coMut <- function() {
         maxCountSigGenes <- max(rowSums(sig_genes[,c(nonsilentColumnName, "nsil")]))
     }
     if (verbose) cat("  counts\n")
-    plot(0, xlim=c(maxCountSigGenes, 0), type="n", axes=FALSE, frame.plot=FALSE, xlab="", ylab="", main = analysis.set)
+    plot(0, xlim=c(maxCountSigGenes, 0), type="n", axes=FALSE, frame.plot=FALSE, xlab="", ylab="")
     par(usr=c(par("usr")[1:2], 0, nrow(sig_genes)), lwd=.8)
     mypos <- barplot(t(sig_genes[nrow(sig_genes):1,c(nonsilentColumnName, "nsil")]), col=c("dodgerblue4", "#4DAF4A"), 
                      horiz=TRUE, names.arg=rep("", nrow(sig_genes)), add=TRUE, border="grey94", space=0, axes=FALSE)
@@ -505,9 +513,9 @@ plot.coMut <- function() {
     par(mar=c(.5, 0, .5, 0.5), las=1)
     plot(0, type="n", axes=FALSE, xlab="", ylab="")
     if (mutation.spectrum.plot && is.null(final_analysis_set$categ) == FALSE) {
-        mutation.spectrum.legend <- rev(rownames(mutational_signatures))
+        mutation.spectrum.legend <- rownames(mutational_signatures)
         legend("right", ifelse(allelic.fraction.boxplot,"top", "center"), 
-               mutation.spectrum.legend,
+               rev(mutation.spectrum.legend),
                fill=rev(mutation_spectrum_plot_brewer), cex=.9, ncol=1, inset=0, bty = "n")
     }
     
