@@ -1,6 +1,6 @@
 #!/bin/bash
 
-
+# usage: ./slim_maf.sh xxxx.maf
 # get patient ID
 tcga="TCGA"
 patient=$(grep "## tumor_sample=" $1  | head -n 1 | tail -c 25)
