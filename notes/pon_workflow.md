@@ -1,6 +1,6 @@
 # M2 w PON
 
-## params
+## Params
 
 ```bash
 ref="/demo-mount/refs/human_g1k_v37.fasta"
@@ -8,7 +8,7 @@ germ="/demo-mount/refs/af-only-gnomad.raw.sites.b37.vcf"
 sublist="/demo-mount/refs/sub_simple/*"
 ```
 
-## workflow
+## Workflow
 
 1. split the chromosome into smaller sub intervals
 
@@ -33,7 +33,12 @@ sublist="/demo-mount/refs/sub_simple/*"
    The most script field inside this yaml is 
 
    ```bash
-   gatk --java-options -Xmx4g Mutect2 -R $ref -I $normal --germline-resource $germ -O $outfile --max-mnp-distance 0
+   gatk --java-options -Xmx4g Mutect2 \
+   	-R $ref \
+   	-I $normal \
+   	--germline-resource $germ \
+   	-O $outfile 
+   	--max-mnp-distance 0
    ```
 
    ```
@@ -61,4 +66,4 @@ sublist="/demo-mount/refs/sub_simple/*"
 
    `GatherVcfsCloud` is a beta tool whose error msg is not informative. When it noted some weird line, try increase memory first (if controller node cannot suffice, try `srun -N 1 -n 2 --mem 50g gatk ...`)! If still not working, double check that output format is `.vcf` instead of `.vcf.gz`!
 
-4. run M2 with matched tumor-normal (to be continued!)
+   
