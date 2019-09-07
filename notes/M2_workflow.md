@@ -8,7 +8,7 @@ This assumes you have got the PON with substantial normals
 ref="/demo-mount/refs/Homo_sapiens_assembly19.fasta"
 germ="/demo-mount/refs/af-only-gnomad.raw.sites.b37.vcf"
 pon="/demo-mount/M2pon/makePON/AllinOne/merged_vcfs/fin_concat/AIO_merged_PON.vcf"
-interval=1 # a number denoting chromosome
+interval=[1-22,"X","Y"] # a number denoting chromosome
 tumor="" # a gs path
 normal="" # a gs path
 ```
@@ -38,4 +38,6 @@ use `.py` to generate a yaml for all tumor-normal pairs by `python3 M2scatter_ge
 * output dir = `/demo-mount/M2full/{pid}`
 
 ### Gather output and run filters
+
+The subsequent steps are for merged vcfs and summarized orientation models.
 
