@@ -16,6 +16,9 @@ The staging dir is where the scattered outputs are stored
 import os
 import yaml
 import glob
+import datetime
+
+now = datetime.datetime.now()
 
 # global params
 expected_chr_counts = 22
@@ -38,19 +41,19 @@ with open(filepath) as f:
         tumor, normal, pid, cohort = l.strip().split("\t")
         scatter_stage = "/demo-mount/canine_m2full/{}".format(pid)
         if os.path.exists(scatter_stage):
-            
+            output_dir = "/demo-mount/M2full/{}".format(pid)
             # how many files are there
-            vcfs = glob.glob("{}/vcfs/*.stats".format(scatter_stage))
-            tumor_piles = glob.glob("{}/tumor_pile/*.table".format(scatter_stage))
-            normal_piles = glob.glob("{}/normal_pile/*.table".format(scatter_stage))
-            f1r2s = glob.glob("{}/f1r2/*.tar.gz".format(scatter_stage))
+            vcfs = glob.glob("{}/vcfs/*.stats".format(output_dir))
+            tumor_piles = glob.glob("{}/tumor_pile/*.table".format(output_dir))
+            normal_piles = glob.glob("{}/normal_pile/*.table".format(output_dir))
+            f1r2s = glob.glob("{}/f1r2/*.tar.gz".format(output_dir))
             
             if len(vcfs) == 22 and len(tumor_piles) == 22 and len(normal_piles) == 22 and len(f1r2s) == 22:    
                 tumor_l.append(tumor)
                 normal_l.append(normal)
                 pid_l.append(pid)
 
-
+print(pid_l)
 outdir = "/demo-mount/M2full"
 stage_dir = "/demo-mount/canine_m2merge"
 ostrdir = "/demo-mount/canine_M2full_ostr"
@@ -98,46 +101,57 @@ gatk --java-options "-Xmx${command_mem}m" FilterMutectCalls -V ${unfiltered_vcf}
     --filtering-stats filtering.stats \
     ${m2_extra_filtering_args}
 
-         gatk --java-options "-Xmx${command_mem}m" Funcotator \
-             --data-sources-path $DATA_SOURCES_FOLDER \
-             --ref-version ${reference_version} \
-             --output-file-format ${output_format} \
-             -R ${ref_fasta} \
-             -V ${input_vcf} \
-             -O ${output_file} \
-             ${interval_list_arg} ${default="" interval_list} \
-             --annotation-default normal_barcode:${default="Unknown" control_id} \
-             --annotation-default tumor_barcode:${default="Unknown" case_id} \
-             --annotation-default Center:${default="Unknown" sequencing_center} \
-             --annotation-default source:${default="Unknown" sequence_source} \
-             ${"--transcript-selection-mode " + transcript_selection_mode} \
-             ${transcript_selection_arg}${default="" sep=" --transcript-list " transcript_selection_list} \
-             ${annotation_def_arg}${default="" sep=" --annotation-default " annotation_defaults} \
-             ${annotation_over_arg}${default="" sep=" --annotation-override " annotation_overrides} \
-             ${excluded_fields_args}${default="" sep=" --exclude-field " funcotator_excluded_fields} \
-             ${filter_funcotations_args} \
-             ${extra_args_arg}
+gatk --java-options "-Xmx${command_mem}m" Funcotator \
+    --data-sources-path $DATA_SOURCES_FOLDER \
+    --ref-version ${reference_version} \
+    --output-file-format ${output_format} \
+    -R ${ref_fasta} \
+    -V ${input_vcf} \
+    -O ${output_file} \
+    ${interval_list_arg} ${default="" interval_list} \
+    --annotation-default normal_barcode:${default="Unknown" control_id} \
+    --annotation-default tumor_barcode:${default="Unknown" case_id} \
+    --annotation-default Center:${default="Unknown" sequencing_center} \
+    --annotation-default source:${default="Unknown" sequence_source} \
+    ${"--transcript-selection-mode " + transcript_selection_mode} \
+    ${transcript_selection_arg}${default="" sep=" --transcript-list " transcript_selection_list} \
+    ${annotation_def_arg}${default="" sep=" --annotation-default " annotation_defaults} \
+    ${annotation_over_arg}${default="" sep=" --annotation-override " annotation_overrides} \
+    ${excluded_fields_args}${default="" sep=" --exclude-field " funcotator_excluded_fields} \
+    ${filter_funcotations_args} \
+    ${extra_args_arg}
 """
 
+
 # input vcfs to merge
-tumor_piles = " ".join(["-I {}/{pid}/tumor_pile/tumor-{}-pileups.table".format(outdir,"{pid}",chr) for chr in chr_l])
-normal_piles = " ".join(["-I {}/{pid}/normal_pile/normal-{}-pileups.table".format(outdir,"{pid}",chr) for chr in chr_l])
-f1r2s = " ".join([" -I {}/{}/f1r2/{}_chr{}-f1r2.tar.gz".format(outdir,"{pid}","{pid}",chr) for chr in chr_l])
-vcfs = " ".join([" -I {}/{}/vcfs/{}_chr{}_unfilter.vcf".format(outdir,"{pid}","{pid}",chr) for chr in chr_l])
-stats = " ".join([" -stats {}/{}/vcfs/{}_chr{}_unfilter.vcf.stats".format(outdir,"{pid}","{pid}",chr) for chr in chr_l])
+tumor_piles = " ".join(["-I {}/{}/tumor_pile/tumor-{}-pileups.table".format(outdir,"{pid}",chr) for chr in chr_l])
+normal_piles = " ".join(["-I {}/{}/normal_pile/normal-{}-pileups.table".format(outdir,"{pid}",chr) for chr in chr_l])
+f1r2s = " ".join(["-I {}/{}/f1r2/{}_chr{}-f1r2.tar.gz".format(outdir,"{pid}","{pid}",chr) for chr in chr_l])
+vcfs = " ".join(["-I {}/{}/vcfs/{}_chr{}_unfilter.vcf".format(outdir,"{pid}","{pid}",chr) for chr in chr_l])
+stats = " ".join(["-stats {}/{}/vcfs/{}_chr{}_unfilter.vcf.stats".format(outdir,"{pid}","{pid}",chr) for chr in chr_l])
 # input 
 # the dictionary is scattered by pids
+gatk = "time gatk --java-options -Xmx{}g".format(heap_mem)
+pid_l = "sdf"
 yy = dict(
         name = "M2_merge",
         script = ["set -eo pipefail",
-                  "$gatk MergeVcfs $vcfs_args -O $merged_vcf",
-                  "$gatk MergeMutectStats $stats_args -O $merged_stats",
-                  "$gatk LearnReadOrientationModel $f1r2_args -O $merged_model",
-                  "$gatk GatherPileupSummaries $tumor_pile_args -O $merged_tumor_pile",
-                  "$gatk GatherPileupSummaries $normal_pile_args -O $merged_normal_pile",
-                  "$gatk CalculateContamination -I $merged_tumor_pile -matched $merged_normal_pile -O $contamination_table --tumor-segmentation $segments_table",
-                  "$gatk FilterMutectCalls -V $merged_vcf -R $ref -O $filtered_vcf --contamination-table $contamination_table --tumor-segmentation $segments_table --ob-priors $merged_model -stats $merged_stats",
-                  "$gatk Funcotator -I $filtered_vcf -O $annot_vcf -R $ref --data-sources-path $dataSourcesFolder --ref-version hg19"],
+                  gatk + " MergeVcfs $vcfs_args -O $merged_vcf",
+                  "echo mergevcf_done!",
+                  gatk + " MergeMutectStats $stats_args -O $merged_stats",
+                  "echo merge_stats_done!",
+                  gatk + " LearnReadOrientationModel $f1r2_args -O $merged_model",
+                  "echo learn_orientation_model_done!",
+                  gatk + " GatherPileupSummaries $tumor_pile_args -O $merged_tumor_pile",
+                  "echo gather_piles_tumor_done!",
+                  gatk + " GatherPileupSummaries $normal_pile_args -O $merged_normal_pile",
+                  "echo gather_piles_normal_done!",
+                  gatk + " CalculateContamination -I $merged_tumor_pile -matched $merged_normal_pile -O $contamination_table --tumor-segmentation $segments_table",
+                  "echo calculate_contamination_done!",
+                  gatk + " FilterMutectCalls -V $merged_vcf -R $ref -O $filtered_vcf --contamination-table $contamination_table --tumor-segmentation $segments_table --ob-priors $merged_model -stats $merged_stats",
+                  "echo filtercalls_done!",
+                  gatk + " Funcotator -I $filtered_vcf -O $annot_vcf -R $ref --data-sources-path $dataSourcesFolder --ref-version hg19",
+                  "echo funcotator_done!"],
         inputs = {
                 "gatk":"gatk --java-options -Xmx{}g".format(heap_mem),
                 "vcfs_args":[vcfs.format(pid = pid) for pid in pid_l],
@@ -154,21 +168,31 @@ yy = dict(
                 "segments_table":["{out}/{pid}/{pid}-segments.table".format(out=outdir, pid=pid) for pid in pid_l],
                 "annot_vcf":["{out}/{pid}/{pid}-annot.vcf.gz".format(out=outdir, pid=pid) for pid in pid_l],
                 "dataSourcesFolder":"/demo-mount/funcotator_dataSources.v1.6.20190124s",
-                "ref":ref,
-                "vfc":vfc
-                }
-        
+                "ref":ref
+                },
+         resources={
+                "cpus_per_task":1,
+                "mem_per_cpu":"20G"
+                },
+         backend={
+                "type":"Local"
+                },
+         localization={
+                "staging_dir":"/demo-mount/M2full/merged",
+                "overrides":{
+                             "gatk":None,
+                             "vcfs_args":None,
+                             "stats_args":None,
+                             "f1r2_args":None,
+                             "normal_pile_args":None,
+                             "tumor_pile_args":None,
+                             "contamination_table":None,
+                             "dataSourcesFolder":None,
+                             "ref":None
+                             }
+                                                                                                                                                                                             }
+                                                         
         )
 
-
-
-
-
-
-
-
-
-
-
-
-
+with open("/home/qingzhang/Documents/git_repos/mutect-benchmark/src/merge_workflow.yaml","w") as outfile:
+    yaml.dump(yy, outfile, default_flow_style=False)
