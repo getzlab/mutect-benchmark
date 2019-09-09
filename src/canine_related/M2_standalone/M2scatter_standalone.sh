@@ -5,7 +5,7 @@
 gatk="gatk --java-options -Xmx2g"
 outdir="/demo-mount/M2full/${pid}"
 tpile="${outdir}/tumor_pile/tumor-${chr}-pileups.table"
-tpile="${outdir}/tumor_pile/tumor-${chr}-pileups.table"
+npile="${outdir}/normal_pile/normal-${chr}-pileups.table"
 f1r2="${outdir}/f1r2/${chr}-f1r2.tar.gz"
 unfilter="${outdir}/vcfs/chr${chr}_unfilter.vcf"
 
