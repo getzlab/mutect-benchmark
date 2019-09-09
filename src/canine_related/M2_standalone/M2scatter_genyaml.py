@@ -11,10 +11,11 @@ For each scattered pieces,
     
 @author: qingzhang
 """
-import os
 import yaml
 
 filepath = "/demo-mount/refs/mpairs.tsv"
+
+# filepath="/home/qingzhang/Documents/igv_remote/helpers/mpairs.tsv"
 with open(filepath) as f:
 
     tumor_l = []
@@ -28,61 +29,63 @@ with open(filepath) as f:
         pid_l.append(pid)
         cohort_l.append(cohort)
 
-chr_l = list(range(1, 23))
-basedir = "/demo-mount/M2full"
-stagedir = "/demo-mount/canine_m2full"
-ostrdir = "/demo-mount/canine_M2full_ostr"
+batch_size=200
+n_batch=len(pid_l) // batch_size+ 1
+chr_l = list(range(1,23))
+
+# files
+vfc="/demo-mount/refs/gnomad_var_for_contamination/variants_for_contamination.vcf"
+ref="/demo-mount/refs/Homo_sapiens_assembly19.fasta"
+germ="/demo-mount/refs/af-only-gnomad.raw.sites.b37.vcf"
+pon="/demo-mount/M2pon/makePON/AllinOne/merged_vcfs/fin_concat/AIO_merged_PON.vcf"
 
 
+for i in list(range(1, n_batch+1)):
+    id_start=(i-1)*batch_size
+    id_end=min(id_start+batch_size, len(tumor_l))
+    print((id_start, id_end))
+    tumor_in_batch=tumor_l[id_start:id_end]
+    normal_in_batch=normal_l[id_start:id_end]
+    pid_in_batch=pid_l[id_start:id_end]
 
-for pid, tumor, normal in zip(pid_l, tumor_l, normal_l):
-    scatter_dir = "/".join([basedir,pid])
-    print(pid)
-    if not os.path.exists(scatter_dir):
-        os.makedirs(scatter_dir)
-    
+    chr_n=22
     yy = dict(
-            name="M2full"+pid,
-            script=["set -eo pipefail",
-                    "mkdir -p {}/tumor_pile".format(scatter_dir),
-                    "mkdir -p {}/normal_pile".format(scatter_dir),
-                    "mkdir -p {}/vcfs".format(scatter_dir),
-                    "mkdir -p {}/f1r2".format(scatter_dir),
-                    "gatk --java-options -Xmx2g Mutect2 -R $ref -I $tumor -I $normal -L $chr --germline-resource $germ -O $outfile -pon $pon --f1r2-tar-gz $f1r2",
-                    "gatk --java-options -Xmx2g GetPileupSummaries -R $ref -I $tumor -L $chr --interval-set-rule INTERSECTION -V $vfc -L $vfc -O $tpile",
-                    "gatk --java-options -Xmx2g GetPileupSummaries -R $ref -I $normal -L $chr --interval-set-rule INTERSECTION -V $vfc -L $vfc -O $npile"],
+            name="m2scatter-{}".format(i),
             resources={
                     "cpus_per_task":1,
                     "mem_per_cpu":"4G"
                     },
+                    
             inputs={
-                    "ref":"/demo-mount/refs/Homo_sapiens_assembly19.fasta",
-                    "germ":"/demo-mount/refs/af-only-gnomad.raw.sites.b37.vcf",
-                    "tumor":tumor,
-                    "normal":normal,
-                    "chr": chr_l,
-                    "vfc":"/demo-mount/refs/gnomad_var_for_contamination/variants_for_contamination.vcf",
-                    "tpile":["{}/tumor_pile/tumor-{}-pileups.table".format(scatter_dir, chr) for chr in chr_l],
-                    "npile":["{}/normal_pile/normal-{}-pileups.table".format(scatter_dir, chr) for chr in chr_l],
-                    "pon": "/demo-mount/M2pon/makePON/AllinOne/merged_vcfs/fin_concat/AIO_merged_PON.vcf",
-                    "f1r2": ["{}/f1r2/{}_chr{}-f1r2.tar.gz".format(scatter_dir,pid,chr) for chr in chr_l],
-                    "outfile":["{}/vcfs/{}_chr{}_unfilter.vcf".format(scatter_dir,pid,chr) for chr in chr_l]
-            },
-    backend={
-            "type":"Local",
-            },
-    localization={
-            "staging_dir":"/".join([stagedir, pid]),
-            "overrides":{
-                    "tumor":None,
-                    "normal":None,
-                    "ref":None,
-                    "germ":None,
-                    "pon":None,
-                    "vfc":None
-                    }
-            }
-    )
-    with open("{}/{}-bychr.yaml".format(ostrdir,pid),"w") as outfile:
+                    "pid":[item for item in pid_in_batch for i in range(chr_n)],
+                    "tumor":[item for item in tumor_in_batch for i in range(chr_n)],
+                    "normal":[item for item in normal_in_batch for i in range(chr_n)],
+                    "chr":list(range(1,23))*(id_end-id_start),
+                    "ref":ref,
+                    "germ":germ,
+                    "vfc":vfc,
+                    "pon": pon
+                    },
+            backend={
+                    "type":"Local",
+                    },
+            localization={
+                    "staging_dir":"/demo-mount/canine_M2scatter/batch_{}".format(i),
+                    "overrides":{
+                            "pid":None,
+                            "chr":None,
+                            "tumor":None,
+                            "normal":None,
+                            "ref":None,
+                            "germ":None,
+                            "pon":None,
+                            "vfc":None
+                            }
+                    } 
+            )
+    with open("/demo-mount/canine_M2scatter/yamls_p{}/batch-{}.yaml".format(batch_size, i),"w") as outfile:
         yaml.dump(yy, outfile, default_flow_style=False)
+
+
+
     

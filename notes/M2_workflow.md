@@ -65,17 +65,30 @@ gatk --java-options -Xmx2g GetPileupSummaries \
 	-O $npile
 ```
 
-use `.py` to generate a yaml for all tumor-normal pairs by `python3 M2scatter_genyaml.py` which will also produce the output directory.
+Run the following to build the yaml files in batches (default batch_size=200, which means 200*22=440 jobs will be dispatched)  
+
+```
+python3 M2scatter_genyaml.py
+```
 
 *[Note on directory structure]*
 
-* staging dir = `/demo-mount/canine_m2full/{pid}`
-* instruction yaml dir = `/demo-mount/canine_M2full_ostr`
+* staging dir = `/demo-mount/canine_M2scatter/batch_{batch_id}`
+* instruction yaml paths = `/demo-mount/canine_M2scatter/yamls_p{batch_size}/batch_{batch_id}.yaml`
 * output dir = `/demo-mount/M2full/{pid}`
   * f1r2 dir = `{output_dir}/f1r2/`
   * vcfs/stats_dir = `{output_dir}/vcfs/`
   * normal_pile = `{output_dir}/normal_pile/`
   * tumor_pile=`{output_dir}/tumor_pile/`
+
+>  ### canine workflow
+
+```bash
+canine /demo-mount/canine_M2scatter/yamls_p200/batch_1/yaml \
+	--script /demo-mount/test_run/M2_standalone/M2scatter_standalone.sh
+```
+
+For details please look at [M2scatter_genyaml](src/canine_related/M2_standalone/M2scatter_genyaml.py) and [M2scatter_standalone.sh](src/canine_related/M2_standalone/M2scatter_standalone.sh).
 
 ## Gather by pair
 
@@ -166,16 +179,15 @@ gatk --java-options "-Xmx${command_mem}g" Funcotator \
 	${extra_args_arg}
 ```
 
-## *CANINE* workflow
+> ## canine workflow
 
 ```bash
+python3 /demo-mount/test_run/M2_standalone/M2merge_genyaml.py
 canine /demo-mount/canine_merge_ostr/merge.yaml \
 	--script /demo-mount/test_run/M2_standalone/M2merge_standalone.sh
 ```
 
-
-
-
+For details please look at [M2merge_genyaml](src/canine_related/M2_standalone/M2merge_genyaml.py) and [M2merge_standalone.sh](src/canine_related/M2_standalone/M2merge_standalone.sh).
 
 ## Refs
 
