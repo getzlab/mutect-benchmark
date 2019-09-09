@@ -65,7 +65,7 @@ gatk --java-options -Xmx2g GetPileupSummaries \
 	-O $npile
 ```
 
-### <canine workflow> :dog:
+ ### :dog: canine workflow​
 
 Run the following to build the yaml files in batches (default batch_size=200, which means 200*22=440 jobs will be dispatched)  
 
@@ -176,7 +176,7 @@ gatk --java-options "-Xmx${command_mem}g" Funcotator \
 	${extra_args_arg}
 ```
 
-## <canine workflow> :dog:
+## :dog: canine workflow
 
 ```bash
 python3 /demo-mount/test_run/M2_standalone/M2merge_genyaml.py
