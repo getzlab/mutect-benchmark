@@ -100,21 +100,21 @@ mkdir -p $resdir/$npile
 mkdir -p $resdir/$subvcfs
 
 command_mem=$heap_mem
-gatk --java-options "-Xmx${command_mem}g" GetSampleName -R $ref_fasta \
+[ -f $normal_name.txt ] && gatk --java-options "-Xmx${command_mem}g" GetSampleName -R $ref_fasta \
     -I ${tumor_bam} -O tumor_name.txt
 
 tumor_command_line="-I ${tumor_bam} -tumor `cat tumor_name.txt`"
 cat tumor_name.txt
 
 
-gatk --java-options "-Xmx${command_mem}g" GetSampleName -R $ref_fasta \
+[ -f $out_vcf ] && gatk --java-options "-Xmx${command_mem}g" GetSampleName -R $ref_fasta \
     -I ${normal_bam} -O normal_name.txt
 
 normal_command_line="-I ${normal_bam} -normal `cat normal_name.txt`"
 cat normal_name.txt
 
 
-gatk --java-options "-Xmx${command_mem}g" Mutect2 \
+[ -f $out_tpile] && gatk --java-options "-Xmx${command_mem}g" Mutect2 \
     -R $ref_fasta \
     $tumor_command_line \
     $normal_command_line \
@@ -127,7 +127,7 @@ echo finish Mutect2 ----------
 
 
 
-gatk --java-options "-Xmx${command_mem}g" GetPileupSummaries \
+[ -f $out_npile ] && gatk --java-options "-Xmx${command_mem}g" GetPileupSummaries \
     -R $ref_fasta -I ${tumor_bam} \
     --interval-set-rule INTERSECTION \
     -L $interval \
@@ -164,6 +164,113 @@ echo allfin!
         }
     )
     return(yy)
+
+
+"""
+#!/bin/bash
+# export PID="ACC-OR-A5J1"
+export mem=20
+export interval_list="gs://broad-references/hg19/v0/wgs_calling_regions.v1.interval_list"
+export ref="/demo-mount/refs/Homo_sapiens_assembly19.fasta"
+export ref_dict="/demo-mount/refs/Homo_sapiens_assembly19.dict"
+export data_source_folder="/demo-mount/refs/funco_slim"
+export tumor_bam="gs://fc-a6cde48f-6248-4428-a950-a256d46a828b/ichor_patients/7_FC19663997_HFW3TBBXX.7.aligned.duplicates_marked.bam"
+set -eo pipefail
+
+outdir="/demo-mount/for_Ziao/res"
+vcfs="${outdir}/subvcfs/*.vcf"
+stats="${outdir}/subvcfs/*.stats"
+normal_piles="${outdir}/normal_piles/*"
+tumor_piles="${outdir}/tumor_piles/*"
+f1r2s="${outdir}/f1r2/*.tar.gz"
+
+all_vcfs_input=`for file in $vcfs; do printf -- " -I ${file}"; done`
+all_stats_input=`for file in $stats; do printf -- " -stats ${file}"; done`
+all_normal_piles_input=`for file in $normal_piles; do printf -- " -I ${file}"; done`
+all_tumor_piles_input=`for file in $tumor_piles; do printf -- " -I ${file}"; done`
+all_f1r2_input=`for file in $f1r2s; do printf -- " -I ${file}"; done`
+
+# command and output formatter
+gatkm="gatk --java-options -Xmx20g"
+merged_unfiltered_vcf="${outdir}/merged_unfiltered.vcf"
+merged_stats="${outdir}/merged_unfiltered.stats"
+artifact_prior="${outdir}/artifact_prior.tar.gz"
+normal_pile_table="${outdir}/normal_pile.tsv"
+tumor_pile_table="${outdir}/tumor_pile.tsv"
+contamination_table="${outdir}/contamination.table"
+segments_table="${outdir}/segments.table"
+filtering_stats="${outdir}/filtering.stats"
+merged_filtered_vcf="${outdir}/merged_filtered.vcf"
+aligned_merged_filtered_vcf="${outdir}/aligned_merged_filtered.vcf"
+annot_merged_filtered_maf="${outdir}/annot_merged_filtered.vcf" 
+bwa_img="/demo-mount/refs/Homo_sapiens_assembly19.fasta.img"
+
+# check if this pair has been finished
+[ -f $annot_merged_filtered_maf ] && { echo "${pid} has finished, exiting .."; exit 0; }
+
+
+echo "----------------------- merge vcfs----------------------------"
+[ -f $merged_stats ] && $gatkm MergeVcfs \
+	$all_vcfs_input \
+	-O $merged_unfiltered_vcf
+
+echo "------------------------merge mutect stats-------------------------------"
+[ -f $artifact_prior ] && $gatkm MergeMutectStats \
+	$all_stats_input \
+	-O $merged_stats
+
+echo "-----------------------learn read orientation model-----------------------"
+[ -f $normal_pile_table ] && $gatkm LearnReadOrientationModel \
+	$all_f1r2_input \
+	-O $artifact_prior
+
+echo "-----------------------gather pile up summaries-----------------------"
+[ -f $tumor_pile_table ] && $gatkm GatherPileupSummaries \
+	$all_normal_piles_input \
+	--sequence-dictionary $ref_dict \
+	-O $normal_pile_table
+
+echo "-----------------------gather tumor piles-----------------------"
+[ -f $contamination_table ] && $gatkm GatherPileupSummaries \
+	$all_tumor_piles_input \
+	--sequence-dictionary $ref_dict \
+	-O $tumor_pile_table
+
+echo "-----------------------calc contamination-----------------------"
+[ -f $merged_filtered_vcf ] && $gatkm CalculateContamination \
+	-I $tumor_pile_table \
+	-O $contamination_table \
+	--tumor-segmentation $segments_table \
+	-matched $normal_pile_table
+
+echo "-----------------------filter calls---------------------------"
+[ -f $aligned_merged_filtered_vcf ] && $gatkm FilterMutectCalls \
+	-V $merged_unfiltered_vcf \
+	-R $ref \
+	--contamination-table $contamination_table \
+	--tumor-segmentation $segments_table \
+	--ob-priors $artifact_prior \
+	-stats $merged_stats \
+	--filtering-stats $filtering_stats \
+	-O $merged_filtered_vcf
+
+
+echo "-----------------------annotate-----------------------"
+$gatkm Funcotator \
+	--data-sources-path $data_source_folder \
+	--ref-version hg19 \
+	--output-file-format MAF \
+	-R $ref \
+	-V $aligned_merged_filtered_vcf \
+	-O $annot_merged_filtered_maf \
+	-L $interval_list \
+	--remove-filtered-variants true
+
+echo "-----------all finished-----------------"
+
+
+"""
+
 
 
 
