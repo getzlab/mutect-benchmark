@@ -30,7 +30,7 @@ if args.iftest:
 else:
     pair_df = pd.read_csv(args.pfile, sep='\t')
 
-if True:
+if False:
     # only runs in debug mode
     pair_df = pd.read_csv("~/Documents/igv_remote/helpers/mpairs.tsv",
                           sep="\t", header=None)

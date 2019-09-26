@@ -14,7 +14,7 @@ M2 = dict(
     f1r2="f1r2",
     subvcfs="subvcfs",
     NFS="/demo-mount",
-    
+
     # these variables are only used once for preparation
     scatter_count=50,
     wes_interval_list="gs://gatk-best-practices/somatic-b37/whole_exome_agilent_1.1_refseq_plus_3_boosters.Homo_sapiens_assembly19.baits.interval_list",
@@ -37,7 +37,7 @@ bp_logs = dict(
 PoN = dict(
     interval_list="gs://gatk-best-practices/somatic-b37/whole_exome_agilent_1.1_refseq_plus_3_boosters.Homo_sapiens_assembly19.baits.interval_list",
     gnomad="gs://gatk-best-practices/somatic-b37/af-only-gnomad.raw.sites.vcf",
-    artifact_mode=["G/T", "C/T"],
+    artifact_mode=["G/T", "C/T"]
 
 
 )
