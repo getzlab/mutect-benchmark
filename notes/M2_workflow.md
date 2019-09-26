@@ -31,6 +31,16 @@ time srun -N 1 -n 4 --mem 80g \
 	-O gnomad_var_for_contamination/variants_for_contamination.vcf
 ```
 
+* Get Index Image for alignment artifact removal
+
+```bash
+ gatk BwaMemIndexImageCreator \
+     -I reference.fasta \
+     -O reference.fasta.img
+```
+
+
+
 ## Scatter: M2 for each pair by chr
 
 Run `python3 M2scatter_genyaml.py` and `canine XXX.yaml` for each pair, whose script is essentially - 
@@ -162,6 +172,7 @@ gatk --java-options "-Xmx${command_mem}g" Funcotator \
     -R ${ref_fasta} \
     -V ${input_vcf} \
     -O ${output_file} \
+    --remove-filtered-variants true \ #!!!!!!!!NOT DEFAULT
     ${interval_list_arg} ${default="" interval_list} \
     --annotation-default normal_barcode:${default="Unknown" control_id} \
     --annotation-default tumor_barcode:${default="Unknown" case_id} \
