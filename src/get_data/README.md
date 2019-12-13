@@ -8,7 +8,7 @@ If the google bucket for the TCGA legacy bams can be accessed (with your ERA com
 python3 dalmation_helper.py
 ```
 
-which will generate a table of paired gs urls in a file named `mpairs_update.csv`. Since most GATK tools can stream google buckets without localization, direct using such bucket would be optimal practice.
+which will generate a table of paired gs urls in a file named `mpairs_update.tsv`. Since most GATK tools can stream google buckets without localization, direct using such bucket would be optimal practice.
 
 
 ### from NCI data commons

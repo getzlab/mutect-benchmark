@@ -46,13 +46,22 @@ def get_pairs_from_wsname(www):
         path_dict["pid"] = path_dict[['cohort', 'patient']].apply(lambda x: '-'.join(x), axis=1)
 
         paired_path = paired_path.append(path_dict)
+    
+    ptable = paired_path.pivot()
     return paired_path
+
+def reorg_slim(pp2)
+    ptable = pp2.pivot_table(columns=['cohort', 'patient', 'sample_type'], values = ['bam_path'], aggfunc = "first").unstack().reset_index()
+    ptable = ptable.drop(['level_0'], axis=1)
+    return ptable
+
+
 
 
 # examples:
 if __name__ == "__main__":
     ws_list = dalmatian.firecloud.api.list_workspaces().json()
     wsname = re_match_wsname(ws_list)
-    pp2 = get_pairs_from_wsname(wsname)
+    pp2 = reorg_slim(get_pairs_from_wsname(wsname))
     pp2.to_csv("mpairs_update.csv")
 
