@@ -18,12 +18,10 @@
 ## You should have received a copy of the GNU Lesser General Public License
 ## along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ###############################################################################
-setwd("~/Downloads/PRAD/")
 
 library(optparse)
 library(R.matlab)
 library(RColorBrewer)
-library(dplyr)
 
 print("packages done")
 
@@ -350,8 +348,8 @@ genematrix <- xtabs(effect_idx ~ symbol + patient_name, data=final_analysis_subs
 
 # calculate the appearance of each mutation by category
 
-bkgd_N <- lapply(split(mutcategs, mutcategs$categ),function(df) data.frame(categ = unique(df$categ), sum_categ = sum(df$N)))
-bkgd_categ <- do.call(rbind, bkdg_N)
+bkgd_N <- lapply(split(mutcategs, mutcategs$categ),function(df) data.frame(categ = unique(df$categ), sum_categ = sum(as.numeric(df$N))))
+bkgd_categ <- do.call(rbind, bkgd_N)
 
 ## build spectrum index legend
 mutcategs_mat <- xtabs(rate ~ categ + name, data = mutcategs)
@@ -444,7 +442,7 @@ plot.coMut <- function() {
         maxCountSigGenes <- max(rowSums(sig_genes[,c(nonsilentColumnName, "nsil")]))
     }
     if (verbose) cat("  counts\n")
-    plot(0, xlim=c(maxCountSigGenes, 0), type="n", axes=FALSE, frame.plot=FALSE, xlab="", ylab="")
+    plot(0, xlim=c(maxCountSigGenes, 0), type="n", axes=FALSE, frame.plot=FALSE, xlab="", ylab="", main = analysis.set)
     par(usr=c(par("usr")[1:2], 0, nrow(sig_genes)), lwd=.8)
     mypos <- barplot(t(sig_genes[nrow(sig_genes):1,c(nonsilentColumnName, "nsil")]), col=c("dodgerblue4", "#4DAF4A"), 
                      horiz=TRUE, names.arg=rep("", nrow(sig_genes)), add=TRUE, border="grey94", space=0, axes=FALSE)
