@@ -1,0 +1,7 @@
+import request
+import json
+
+with open("/home/qingzhang/Downloads/credentials.json") as json_file: 
+     credential = json.load(json_file)
+
+token = requests.post('https://nci-crdc.datacommons.io/user/credentials/api/access_token', json=credential) 
