@@ -1,21 +1,18 @@
-# Benchmarking Mutect!
+# Somatic Variant Calling benchmark with Mutect and GATK Mutect2
 
-This is the code repo for my master thesis in Broad institute. This work is mentored by Julian Hess, Chet Birger and Gad Getz. Thanks to all! It has been a great pleasure to learn from you!
 
-Code here is mostly for self record, in the form of markdown notes and source code
 
-## Content
+This repo has visualization code / thesis / slides for defense for my thesis on somatic SNV caller comparison between Mutect1 and GATK Mutect2. The code to reproduce Mutect2 (in GATK 4.1.4.0) in Snakemake can be found at [smk-m2](https://github.com/getzlab/smk-m2). 
 
-- Run Mutsig in Broad cluster
-- Generate coMut plots
-- Find fishy driver genes from Mutation distribution
-- Run M2
+Major finding is summarized as below:
 
-## Good tools
+- Significance analysis is crucial to find scientifically important patterns that drives the difference in call sets. The seemingly concordant call sets might produce very divergent sets of significant genes.
+- M2's postfilters are able to filter some mapping artifacts and base quality artifacts compared to M2, however some of the realigned haplotypes could be false positives
+- M1 tends to be conservative at regions with more variations, thus would have missed SNVs near SVs / indels, although the portion affected is negligible.
 
-This work cannot be finished without the help of existing great tools! Check out
+I would like to thank Gaddy, Julian and Chip for their generous input to this work.  I would also like to thank GATK team (David Benjamin, Soo Hee Lee) for their nice documentation and clear explanation on GATK forum. The computational resource is supported by GDAN grant.
 
-* [dalmatian](https://github.com/broadinstitute/dalmatian) (Firecloud via pandas)
-* [canine](https://github.com/broadinstitute/canine) (an orchestrator for slurm jobs) **special thanks for Aaron!**
-* [slurm-GCE](https://github.com/broadinstitute/slurm_GCE) (create slurm cluster from google VM)
+
+
+
 
