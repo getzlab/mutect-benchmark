@@ -24,7 +24,7 @@ On local computer,
 ssh -L 5907:localhost:5907 -N -f -l qing EXTERNAL_IP
 ```
 
-then run `vncviewer`and type the passwd to proceed.
+then run `vncviewer`and type the passwd to proceed on Ubuntu, `open vnc://localhost:5907` on Mac.
 
 
 
