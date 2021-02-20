@@ -8,11 +8,19 @@ The pub key email username should match the username in the server!
 
 ## Run VNC
 
-On Google VM,
+On Google VM
 
 ```bash
 vncserver :7 -geometry 1200x800 -depth 24 -rfbauth ~/.vnc/passd
 ```
+(my Ubuntu PC)
+
+
+```bash
+vncserver :7 -geometry 2560x1600 -depth 24 -rfbauth ~/.vnc/passd
+```
+
+(Mac)
 
 The number after the colon, plus `5900` (in this case, 5907) is the port we specified!
 
